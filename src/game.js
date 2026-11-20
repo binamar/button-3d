@@ -1,9 +1,13 @@
 import*as T from'three';
-import{EffectComposer,RenderPass,EffectPass,BloomEffect}from'postprocessing';
+import{EffectComposer,RenderPass,EffectPass,BloomEffect,ToneMappingEffect,ToneMappingMode}from'postprocessing';
+import{RoomEnvironment}from'three/examples/jsm/environments/RoomEnvironment.js';
 const M=['###############','#.....#.......#','#..........B..#','#.....#.......#','##.############','#.....#.......#','#.....#.......#','#.............#','#.....#.......#','#.....#.......#','#######.#######'];
 const C=3,H=3.2,R=M.length,K=M[0].length,W=K*C,D=R*C;
 const $=i=>document.getElementById(i),P=(c,r)=>[(c+.5)*C,(r+.5)*C];
 const S=o=>new T.MeshStandardMaterial(o);
+const TL=new T.TextureLoader();
+const pbr=(n,mat,rx,ry)=>{for(const s of'dnr')TL.load('tex/'+n+'-'+s+'.jpg',t=>{t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(rx,ry);t.anisotropy=8;
+ if(s=='d'){t.colorSpace=T.SRGBColorSpace;mat.map=t;mat.color.set(0xffffff)}else if(s=='n'){mat.normalMap=t;mat.bumpMap=null}else{mat.roughnessMap=t;mat.roughness=1}mat.needsUpdate=true},undefined,()=>{})};
 
 // ---- procedural textures
 const cv=(n,f)=>{const c=document.createElement('canvas');c.width=c.height=n;f(c.getContext('2d'),n);const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;return t};
@@ -22,6 +26,7 @@ ren.toneMapping=T.ACESFilmicToneMapping;ren.toneMappingExposure=1.15;
 ren.shadowMap.enabled=true;ren.shadowMap.type=T.PCFSoftShadowMap;
 const scene=new T.Scene(),cam=new T.PerspectiveCamera(70,1,.1,300);
 scene.fog=new T.Fog(new T.Color().setRGB(.30,.16,.14),30,120);
+scene.environment=new T.PMREMGenerator(ren).fromScene(new RoomEnvironment(),.04).texture;scene.environmentIntensity=.25;
 let comp=null;const rs=()=>{ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();if(comp)comp.setSize(innerWidth,innerHeight)};
 addEventListener('resize',rs);rs();
 
@@ -43,22 +48,23 @@ sun.shadow.bias=-.0004;sun.shadow.normalBias=.05;
 scene.add(sun,sun.target,new T.HemisphereLight(0x8aa0d0,0x40302a,.9));
 
 // ---- geometry
-const ground=new T.Mesh(new T.PlaneGeometry(300,300),S({map:asph,roughness:.95}));
+const gm=S({map:asph,roughness:.95});pbr('ground',gm,50,50);const ground=new T.Mesh(new T.PlaneGeometry(300,300),gm);
 ground.rotation.x=-Math.PI/2;ground.position.set(W/2,-.02,D/2);ground.receiveShadow=true;scene.add(ground);
-const floor=new T.Mesh(new T.PlaneGeometry(W,D),S({map:tile,roughness:.55,metalness:.1}));
+const fm=S({map:tile,roughness:.55,metalness:.1});pbr('floor',fm,W/3,D/3);const floor=new T.Mesh(new T.PlaneGeometry(W,D),fm);
 floor.rotation.x=-Math.PI/2;floor.position.set(W/2,0,D/2);floor.receiveShadow=true;scene.add(floor);
 const pt=tile.clone();pt.repeat.set(1,4);pt.needsUpdate=true;
 const path=new T.Mesh(new T.PlaneGeometry(C*2,24),S({map:pt,roughness:.6}));
 path.rotation.x=-Math.PI/2;path.position.set(P(7,0)[0],.01,D+12);path.receiveShadow=true;scene.add(path);
 
 const wm=S({map:conc,bumpMap:conc,bumpScale:.6,roughness:.92,color:0xc8cacd});
+pbr('wall',wm,2,2);
 const wc=[];M.forEach((row,r)=>[...row].forEach((ch,c)=>{if(ch=='#')wc.push([c,r])}));
 const walls=new T.InstancedMesh(new T.BoxGeometry(C,H,C),wm,wc.length),m4=new T.Matrix4();
 wc.forEach(([c,r],i)=>{m4.setPosition((c+.5)*C,H/2,(r+.5)*C);walls.setMatrixAt(i,m4)});
 walls.castShadow=walls.receiveShadow=true;scene.add(walls);
 const lint=new T.Mesh(new T.BoxGeometry(C,H-2.4,C),wm);lint.position.set(P(7,10)[0],2.4+(H-2.4)/2,P(7,10)[1]);lint.castShadow=true;scene.add(lint);
 const rf=conc.clone();rf.repeat.set(K,R);rf.needsUpdate=true;
-const roof=new T.Mesh(new T.BoxGeometry(W,.3,D),S({map:rf,roughness:1,color:0x999999}));
+const rfm=S({map:rf,roughness:1,color:0x999999});pbr('wall',rfm,K*1.5,R*1.5);const roof=new T.Mesh(new T.BoxGeometry(W,.3,D),rfm);
 roof.position.set(W/2,H+.15,D/2);roof.castShadow=roof.receiveShadow=true;scene.add(roof);
 
 // colliders [x,z,halfX,halfZ]
@@ -150,4 +156,4 @@ function frame(){
   if(gs==0){sun.shadow.map&&sun.shadow.map.dispose();sun.shadow.map=null;sun.shadow.mapSize.set(1024,1024)}else{ren.setPixelRatio(1);rs()}
   gs++}}}
 }
-comp=new EffectComposer(ren);comp.addPass(new RenderPass(scene,cam));comp.addPass(new EffectPass(cam,new BloomEffect({intensity:.5,luminanceThreshold:.6,luminanceSmoothing:.3,mipmapBlur:true})));rs();ren.setAnimationLoop(frame);
+comp=new EffectComposer(ren,{multisampling:4});comp.addPass(new RenderPass(scene,cam));comp.addPass(new EffectPass(cam,new BloomEffect({intensity:.5,luminanceThreshold:.6,luminanceSmoothing:.3,mipmapBlur:true}),new ToneMappingEffect({mode:ToneMappingMode.ACES_FILMIC})));rs();ren.setAnimationLoop(frame);
