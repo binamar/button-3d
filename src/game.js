@@ -1,4 +1,5 @@
 import*as T from'three';
+import{EffectComposer,RenderPass,EffectPass,BloomEffect}from'postprocessing';
 const M=['###############','#.....#.......#','#..........B..#','#.....#.......#','##.############','#.....#.......#','#.....#.......#','#.............#','#.....#.......#','#.....#.......#','#######.#######'];
 const C=3,H=3.2,R=M.length,K=M[0].length,W=K*C,D=R*C;
 const $=i=>document.getElementById(i),P=(c,r)=>[(c+.5)*C,(r+.5)*C];
@@ -21,7 +22,7 @@ ren.toneMapping=T.ACESFilmicToneMapping;ren.toneMappingExposure=1.15;
 ren.shadowMap.enabled=true;ren.shadowMap.type=T.PCFSoftShadowMap;
 const scene=new T.Scene(),cam=new T.PerspectiveCamera(70,1,.1,300);
 scene.fog=new T.Fog(new T.Color().setRGB(.30,.16,.14),30,120);
-const rs=()=>{ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()};
+let comp=null;const rs=()=>{ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();if(comp)comp.setSize(innerWidth,innerHeight)};
 addEventListener('resize',rs);rs();
 
 // sky shader
@@ -143,10 +144,10 @@ function frame(){
  dust.position.set(Math.sin(t*.2)*.4,Math.sin(t*.35)*.15,Math.cos(t*.17)*.4);
  cam.position.set(pl.x,1.6+Math.sin(bob)*.035,pl.z);cam.rotation.set(pl.pitch,pl.yaw,0,'YXZ');
  sky.position.copy(cam.position);
- ren.render(scene,cam);
+ comp.render(dt);
  // simple perf governor
  if(started&&(warm-=dt)<0){gt+=dt;gn++;if(gt>2){const f=gn/gt;gt=gn=0;if(f<38&&gs<2){
   if(gs==0){sun.shadow.map&&sun.shadow.map.dispose();sun.shadow.map=null;sun.shadow.mapSize.set(1024,1024)}else{ren.setPixelRatio(1);rs()}
   gs++}}}
 }
-ren.setAnimationLoop(frame);
+comp=new EffectComposer(ren);comp.addPass(new RenderPass(scene,cam));comp.addPass(new EffectPass(cam,new BloomEffect({intensity:.5,luminanceThreshold:.6,luminanceSmoothing:.3,mipmapBlur:true})));rs();ren.setAnimationLoop(frame);
