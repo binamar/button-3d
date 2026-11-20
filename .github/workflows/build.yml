@@ -1,0 +1,59 @@
+name: build-apk
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: build
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Bundle web
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i '0,/<activity/s//<activity android:screenOrientation="sensorLandscape"/' $M
+          sed -i 's|<style name="AppTheme.NoActionBar"[^>]*>|&<item name="android:windowFullscreen">true</item>|' android/app/src/main/res/values/styles.xml
+      - name: Build release
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null || true
+          cd android && ./gradlew assembleRelease --no-daemon -q
+      - name: Keystore cache
+        id: ks
+        uses: actions/cache@v4
+        with:
+          path: release.jks
+          key: keystore-v1
+      - name: Create keystore
+        if: steps.ks.outputs.cache-hit != 'true'
+        run: keytool -genkeypair -keystore release.jks -alias k -keyalg RSA -keysize 2048 -validity 10000 -storepass button3d -keypass button3d -dname "CN=Button3D"
+      - name: Sign
+        run: |
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          $BT/zipalign -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          $BT/apksigner sign --ks release.jks --ks-pass pass:button3d --key-pass pass:button3d --out Button3D.apk aligned.apk
+          $BT/apksigner verify Button3D.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Button 3D v1.0.${{ github.run_number }}
+          files: Button3D.apk

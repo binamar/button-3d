@@ -1,0 +1,27 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>الزر</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#fff;font-family:system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block;position:fixed;inset:0}
+#vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.6))}
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(5,6,10,.82);text-align:center;padding:20px}
+#end{background:#05060a;display:none;overflow:hidden}#end.show{display:flex}
+h1{font-size:44px;margin:0;letter-spacing:2px}
+p{margin:0;opacity:.8;font-size:16px;line-height:1.7}
+button{font:inherit;font-size:20px;color:#fff;background:#c4201a;border:0;border-radius:40px;padding:12px 38px}
+#hud{position:fixed;top:max(10px,env(safe-area-inset-top));left:0;right:0;text-align:center;font-size:15px;text-shadow:0 1px 4px #000;display:none;pointer-events:none}
+#joy{position:fixed;left:max(28px,env(safe-area-inset-left));bottom:28px;width:120px;height:120px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);display:none}
+#stick{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.35)}
+#act{position:fixed;right:max(40px,env(safe-area-inset-right));bottom:40px;width:96px;height:96px;border-radius:50%;padding:0;font-size:18px;display:none;box-shadow:0 0 24px #f33}
+body.on #hud,body.on #joy{display:block}
+#cr{animation:up 12s ease-out forwards;transform:translateY(70vh)}
+@keyframes up{to{transform:none}}
+#cr b{font-size:20px;display:block;margin-top:14px}
+</style></head><body>
+<canvas id="c"></canvas><div id="vig"></div><div id="hud"></div>
+<div id="joy"><i id="stick"></i></div><button id="act">اضغط</button>
+<div id="start" class="scr"><h1>الزر</h1><p>ادخل المبنى، اعثر على الزر الأحمر واضغطه.</p><button id="go">ابدأ</button><p style="font-size:13px;opacity:.55">العصا اليسرى: حركة · اسحب باليمين: نظر</p></div>
+<div id="end" class="scr"><div id="cr"><h1>انتهت اللعبة</h1><p>شكراً للعب</p><b>الحقوق</b><p>فكرة وتنفيذ: binamar</p><p>برمجة بمساعدة Claude</p><p>المحرك: Three.js (MIT)</p><br><button onclick="location.reload()">العب مجدداً</button></div></div>
+<script src="game.js"></script></body></html>
